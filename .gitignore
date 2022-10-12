@@ -127,3 +127,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# MGL869 specific
+bug_files.csv
+files_vars.csv
+und_project/
