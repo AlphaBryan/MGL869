@@ -56,7 +56,7 @@ class Collector:
         
         # Fetch files from Git
         if not os.path.exists(self.git_local_repo_path):
-            # Cloning HIVE repository takes a couple of minutes
+            # Cloning HIVE repository: takes a couple of minutes
             git.Git(self.git_local_repo_folder).clone(self.git_remote_repo_path)
         else:
             git.Repo(self.git_local_repo_path).remotes.origin.pull()
@@ -104,7 +104,7 @@ class Collector:
 
             files.add(line_values[-1]) # Add file to files set
         
-        # Fetch files' versions from Git
+        # Fetch files' versions from Git: takes severals minutes
         git_repo = git.Repo(self.git_local_repo_path)
         git_repo.git.reset('--hard') # Reset local repo
 
@@ -127,10 +127,10 @@ class Collector:
                     continue
 
                 file_last_commit = sorted(file_commits, key=lambda c: c.committed_datetime)[-1]
-                file_name = os.path.basename(f)
 
                 # Add file's version content as code file in Understand project
-                code_file = open(self.und_project + '/' + version + '_' + file_name, 'wb')
+                code_file_name = version + '_' + f.replace('/', '_')
+                code_file = open(self.und_project + '/' + code_file_name, 'wb')
                 code_file.write((file_last_commit.tree / f).data_stream.read())
                 code_file.close()
 
