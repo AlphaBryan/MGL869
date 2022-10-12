@@ -1,0 +1,4 @@
+-db ./project.und
+add ./und_project
+analyze
+metrics

@@ -1,0 +1,4 @@
+create -languages C++ Java ./project.und
+settings -metrics all
+settings -metricsOutputFile ./metrics.csv
+metrics
