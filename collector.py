@@ -1,7 +1,6 @@
 import git
 import os
 import re
-import shutil
 import subprocess
 import urllib.request as req
 from xml.etree.ElementTree import parse
@@ -21,12 +20,10 @@ class Collector:
     git_remote_repo_path = 'https://github.com/apache/' + git_repo_name
     git_local_repo_folder = '../'
     git_local_repo_path = git_local_repo_folder + git_repo_name
-    # Path to CSV file listing files per bug
+    # Path to CSV file listing versions per file per bug
     bug_files_path = './bug_files.csv'
     # Path to CSV file listing independent variables per file's versions
     files_vars_path = './files_vars.csv'
-    # Path to Understand project folder
-    und_project = './und_project'
     # Path to Understand .exe
     und_exe = '../scitools/bin/linux64/und'
     # Path to Understand commands files
@@ -34,6 +31,7 @@ class Collector:
     und_analyze_commands_path = './undAnalyzeCommands.txt'
     # Path to metrics file
     metrics_file_path = './metrics.csv'
+
 
     def __init__(self, bugs_to_collect, vars_to_collect):
         self.bugs_to_collect = bugs_to_collect
@@ -51,66 +49,69 @@ class Collector:
 
 
     def collect_bugs(self):
-        bugs = [] # List of bugs
+        bugs = {} # Dict of affected versions per bug
         output_file = open(self.bug_files_path, 'w')
-        output_file.write('BugId,Fichier\n')
+        output_file.write('BugId,Fichier,Version\n')
 
         # Fetch bugs from JIRA
         url = req.urlopen(self.bugs_report_url)
         xmldoc = parse(url)
         for item in xmldoc.iterfind('channel/item'):
             bug_id = item.findtext('key')
-            bugs += [bug_id]
+            affected_versions = [elem.text for elem in item.findall('version')]
+            bugs[bug_id] = affected_versions
         
         # Fetch files from Git
         if not os.path.exists(self.git_local_repo_path):
             # Cloning HIVE repository: takes a couple of minutes
             git.Git(self.git_local_repo_folder).clone(self.git_remote_repo_path)
         else:
-            git.Repo(self.git_local_repo_path).remotes.origin.pull()
+            git_repo = git.Repo(self.git_local_repo_path)
+            git_repo.git.reset('--hard') # Reset local repo
+            git_repo.git.checkout('origin/master', force = True) # Restore to origin
+
         # Iterate over Git repo's commits
         for commit in git.Repo(self.git_local_repo_path).iter_commits():
-            jira_id = self.parse_jira_id(commit)
-            if not jira_id in bugs:
+            jira_id = re.search('HIVE-[0-9]+', commit.message)
+            if not (jira_id and jira_id.group() in bugs): # Only consider commits refering to a JIRA bug
                 continue
 
+            bug_id = jira_id.group()
             files = commit.stats.files
+
             for file in files:
-                if not self.to_consider(file):
+                file_ext = os.path.splitext(file)[-1].lower()
+                if file_ext not in ['.h', '.cpp', '.java']: # Only consider C++ and Java files
                     continue
-                    
-                # Print results in CSV output file
-                output_file.write(jira_id + ',' + file + '\n')
+                
+                for version in bugs[bug_id]: # One line per file's version with bug
+                    # Print results in CSV output file
+                    output_file.write(bug_id + ',' + os.path.basename(file) + ',' + version + '\n')
 
         output_file.close() # Save output file
-
-
-    def parse_jira_id(self, commit):
-        jira_id = re.search('HIVE-[0-9]+', commit.message)
-        return jira_id.group() if jira_id else None
-
-
-    def to_consider(self, file):
-        file_ext = os.path.splitext(file)[-1].lower()
-        return file_ext in ['.cpp', '.java'] # Only C++ and Java files are considered
 
 
     def get_collected_bugs(self):
         if not os.path.exists(self.bug_files_path):
             return None
         
-        bug_files = set() # Set of bugs_id,file pairs
-        # Input CSV file in format bug_id;file_path
+        file_bugs = {} # Dict of bugs per (file, version) pair
+        # Input CSV file in format bug_id,file_name,file_version
         input_file = open(self.bug_files_path, 'r')
         for line in input_file.read().splitlines()[1:]:
             line_values = line.split(',')
             if len(line_values) <= 1:
                 continue
-                
-            bug_file = (line_values[0], line_values[1])
-            bug_files.add(bug_file) # Add bug_id,file pair to set
 
-        return bug_files
+            bug_id = line_values[0]
+            bug_file = (line_values[1], line_values[2])
+
+            if bug_file in file_bugs:
+                file_bugs[bug_file] += [bug_id]
+            else:
+                file_bugs[bug_file] = [bug_id]
+
+        return file_bugs
 
     
     def collect_vars(self):
@@ -121,72 +122,44 @@ class Collector:
         # Previously collected bugs
         collected_bugs = self.get_collected_bugs()
 
-        # Initialize Understand project's folder
-        if os.path.exists(self.und_project):
-            shutil.rmtree(self.und_project)
-        os.mkdir(self.und_project)
-
         # Build output file's header
+        output_file_header = 'Version,CommitId,Fichier,ContientBogue,'
+        subprocess.run([self.und_exe, self.und_create_commands_path])
+        metrics_file_header = open(self.metrics_file_path, 'r').readlines()[0]
+        output_file_header += ','.join(metrics_file_header.split(',')[2:])
         output_file = open(self.files_vars_path, 'w')
-        output_file.write(self.labelize_collected_vars())
+        output_file.write(output_file_header)
         
         # Fetch files' versions from Git: takes severals minutes
         git_repo = git.Repo(self.git_local_repo_path)
         git_repo.git.reset('--hard') # Reset local repo
 
-        for branch in git_repo.remote().refs:
-            branch_name = branch.name
-            # Ignore branches not mentioning 'branch' nor 'release'
-            if 'branch' not in branch_name and 'release' not in branch_name:
+        repo_tags = sorted(git_repo.tags, key=lambda t: t.commit.committed_datetime)
+
+        for tag in repo_tags:
+            tag_version = re.search('[0-9]+\.[0-9]+\.[0-9]', tag.name)
+            if not tag_version:
                 continue
 
-            branch_version = re.search('[0-9]+\.[0-9]+\.[0-9]*', branch_name)
-            if not branch_version:
+            version = tag_version.group() # HIVE's version related to branch
+            git_repo.git.checkout(tag.commit.hexsha, force = True) # Restore local repo to given branch
+            
+            # Generate metrics with Understand
+            subprocess.run([self.und_exe, self.und_analyze_commands_path])
+            metrics_lines = open(self.metrics_file_path, 'r').readlines()
+            if len(metrics_lines) < 1: # No metric was generated
                 continue
 
-            version = branch_version.group() # HIVE's version related to branch
-            git_repo.git.checkout(branch_name) # Restore local repo to given branch
-
-            # Iterate over all files in repo
-            for blob in git_repo.tree().traverse():
-                f = blob.path # Path to file related to blob in repo tree
-                if not self.to_consider(f):
+            for line in metrics_lines[1:]:
+                line_values = line.split(',')
+                if line_values[0] != 'File': # Only consider File metrics
                     continue
 
-                # Only iterate over last commit of each file
-                for commit in git_repo.iter_commits(paths = f, max_count = 1):
-                    # Add file's version content as code file in Understand project
-                    code_file_path = self.und_project + '/' + os.path.basename(f)
-                    code_file = open(code_file_path, 'wb')
-                    code_file.write((commit.tree / f).data_stream.read())
-                    code_file.close()
+                file_name = line_values[1]
+                file_metrics = ','.join(line_values[2:])
+                file_has_bug = (file_name, version) in collected_bugs
+                # Print results in CSV output file
+                line_start = version + ',' + tag.commit.hexsha + ',' + file_name
+                output_file.write(line_start + ',' + str(file_has_bug) + ',' + file_metrics)
 
-                    # Generate metrics with Understand
-                    subprocess.run([self.und_exe, self.und_analyze_commands_path])
-                    metrics = open(self.metrics_file_path, 'r').readlines()
-                    if len(metrics) < 1: # No metrics were generated
-                        continue
-                    
-                    file_metrics = ','.join(metrics[1].split(',')[2:])
-                    
-                    # Delete code file
-                    os.remove(code_file_path)
-                    # Check if file's version has bug
-                    bug_detected = (self.parse_jira_id(commit), f) in collected_bugs
-                    # Print results in CSV output file
-                    line_start = version + ',' + commit.hexsha + ',' + f + ',' + str(bug_detected)
-                    output_file.write(line_start + ',' + file_metrics)
-
-
-        git_repo.git.reset('--hard') # Reset local repo
         output_file.close() # Save output file
-
-
-    def labelize_collected_vars(self):
-        # Return the header for collected vars output file
-        labels = 'Version,CommitId,Fichier,ContientBogue,'
-        subprocess.run([self.und_exe, self.und_create_commands_path])
-        metrics_file_header = open(self.metrics_file_path, 'r').readlines()[0]
-        labels += ','.join(metrics_file_header.split(',')[2:])
-
-        return labels
