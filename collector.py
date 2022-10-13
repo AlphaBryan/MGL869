@@ -85,10 +85,19 @@ class Collector:
                     continue
                 
                 for version in bugs[bug_id]: # One line per file's version with bug
+                    version = self.parse_version(version) # HIVE's version related to file
+                    if not version:
+                        continue
+
                     # Print results in CSV output file
                     output_file.write(bug_id + ',' + os.path.basename(file) + ',' + version + '\n')
 
         output_file.close() # Save output file
+
+
+    def parse_version(self, text):
+        version = re.search('[0-9]+\.[0-9]+\.[0-9]', text)
+        return version.group() if version else None
 
 
     def get_collected_bugs(self):
@@ -137,12 +146,11 @@ class Collector:
         repo_tags = sorted(git_repo.tags, key=lambda t: t.commit.committed_datetime)
 
         for tag in repo_tags:
-            tag_version = re.search('[0-9]+\.[0-9]+\.[0-9]', tag.name)
-            if not tag_version:
+            version = self.parse_version(tag.name) # HIVE's version related to tag
+            if not version:
                 continue
 
-            version = tag_version.group() # HIVE's version related to branch
-            git_repo.git.checkout(tag.commit.hexsha, force = True) # Restore local repo to given branch
+            git_repo.git.checkout(tag.commit.hexsha, force = True) # Restore local repo to tag's commit
             
             # Generate metrics with Understand
             subprocess.run([self.und_exe, self.und_analyze_commands_path])
