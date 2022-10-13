@@ -140,11 +140,11 @@ class Collector:
         output_file = open(self.files_vars_path, 'w')
         output_file.write(output_file_header)
         
-        # Fetch files' versions from Git: takes severals minutes
+        # Fetch files' versions from Git
         git_repo = git.Repo(self.git_local_repo_path)
         git_repo.git.reset('--hard') # Reset local repo
 
-        # Iterate over tags of HIVE's versions 2.0.0 and more
+        # Iterate over tags of HIVE's versions 2.0.0 and more: takes severals minutes
         for tag in git_repo.tags: 
             tag_datetime = tag.commit.committed_datetime
             if tag_datetime < datetime(2016, 2, 15, 0, 0, 0, 0, tag_datetime.tzinfo):
