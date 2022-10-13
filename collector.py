@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import git
 import os
 import re
@@ -147,8 +147,8 @@ class Collector:
         # Iterate over tags of HIVE's versions 2.0.0 and more
         for tag in git_repo.tags: 
             tag_datetime = tag.commit.committed_datetime
-            if tag_datetime < datetime.datetime(2016, 2, 15, tag_datetime.tzinfo):
-                continue # Tags refer to a HIVE's version older than 2.0.0 release
+            if tag_datetime < datetime(2016, 2, 15, 0, 0, 0, 0, tag_datetime.tzinfo):
+                continue # Tags refer to a HIVE's version older than 2.0.0 release (2016-02-15)
 
             version = self.parse_version(tag.name) # HIVE's version related to tag
             if not version :
