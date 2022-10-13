@@ -172,6 +172,6 @@ class Collector:
                 file_has_bug = (file_name, version) in collected_bugs
                 # Print results in CSV output file
                 line_start = version + ',' + tag.commit.hexsha + ',' + file_name
-                output_file.write(line_start + ',' + str(file_has_bug) + ',' + file_metrics)"
+                output_file.write(line_start + ',' + str(file_has_bug) + ',' + file_metrics)
 
         output_file.close() # Save output file
