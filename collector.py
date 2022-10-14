@@ -144,14 +144,10 @@ class Collector:
         git_repo = git.Repo(self.git_local_repo_path)
         git_repo.git.reset('--hard') # Reset local repo
 
-        # Iterate over tags of HIVE's versions 2.0.0 and more: takes severals minutes
+        # Iterate over tags of HIVE's versions 2.0.0 and more: takes severals hours
         for tag in git_repo.tags: 
-            tag_datetime = tag.commit.committed_datetime
-            if tag_datetime < datetime(2016, 2, 15, 0, 0, 0, 0, tag_datetime.tzinfo):
-                continue # Tags refer to a HIVE's version older than 2.0.0 release (2016-02-15)
-
             version = self.parse_version(tag.name) # HIVE's version related to tag
-            if not version :
+            if not version or int(version[0]) < 2:
                 continue
 
             git_repo.git.checkout(tag.commit.hexsha, force = True) # Restore local repo to tag's commit
@@ -167,7 +163,7 @@ class Collector:
                 if line_values[0] != 'File': # Only consider File metrics
                     continue
 
-                file_name = line_values[1]
+                file_name = line_values[1][1:-1] # "" around file name are ignored
                 file_metrics = ','.join(line_values[2:])
                 file_has_bug = (file_name, version) in collected_bugs
                 # Print results in CSV output file
