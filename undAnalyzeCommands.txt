@@ -1,4 +1,7 @@
 -db ./project.und
 add ../hive
 analyze
+settings -MetricShowDeclaredInFile on ./project.und
+settings -metrics all
+settings -metricsOutputFile ./metrics.csv
 metrics

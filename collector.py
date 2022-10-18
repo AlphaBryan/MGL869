@@ -27,6 +27,7 @@ class Collector:
     files_vars_path = './files_vars.csv'
     # Path to Understand .exe
     und_exe = '../scitools/bin/linux64/und'
+    # und_exe = 'C:/Program Files/SciTools/bin/pc-win64/und.exe'
     # Path to Understand commands files
     und_create_commands_path = './undCreateCommands.txt'
     und_analyze_commands_path = './undAnalyzeCommands.txt'
@@ -160,11 +161,11 @@ class Collector:
 
             for line in metrics_lines[1:]:
                 line_values = line.split(',')
-                if line_values[0] != 'File': # Only consider File metrics
+                if line_values[0] not in ('File', 'Method', 'Class'): # Only consider File, Method and Class metrics
                     continue
 
-                file_name = line_values[1][1:-1] # "" around file name are ignored
-                file_metrics = ','.join(line_values[2:])
+                file_name = line_values[2] # MetricShowDeclaredInFile setting puts file name in 3rd column
+                file_metrics = ','.join(line_values[3:])
                 file_has_bug = (file_name, version) in collected_bugs
                 # Print results in CSV output file
                 line_start = version + ',' + tag.commit.hexsha + ',' + file_name
