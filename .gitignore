@@ -134,3 +134,8 @@ files_vars.csv
 und_project/
 metrics.csv
 project.und/
+cleaned_files_vars.csv
+files_vars_no_dupes.csv
+validation_files_vars.csv
+rf_model.dump
+lr_model.dump

@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-class DataClean:
+class DataCleaner:
     clean_file = False
 
     def __init__(self, clean_file):
@@ -15,5 +15,5 @@ class DataClean:
         removed_duplicates = files_vars.drop_duplicates()
         removed_duplicates.to_csv('files_vars_no_dupes.csv', index=False)
 
-        cleaned_date = removed_duplicates.groupby(["Version", "CommitId", "Fichier", "ContientBogue"], as_index=False).first()
-        cleaned_date.to_csv('cleaned_files_vars.csv', index=False)
+        cleaned_data = removed_duplicates.groupby(["Version", "CommitId", "Fichier", "ContientBogue"], as_index=False).first()
+        cleaned_data.to_csv('cleaned_files_vars.csv', index=False)
