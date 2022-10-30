@@ -55,15 +55,15 @@ class Trainer:
             self.train_lr_model(X_train, y_train)
 
 
-    def train_rf_model(self, dataset_classes, dataset_features):
+    def train_rf_model(self, dataset_features, dataset_classes):
         # Construct model with Random Forest classifier
-        rf_model = self.rf_classifier.fit(dataset_classes, dataset_features)
+        rf_model = self.rf_classifier.fit(dataset_features, dataset_classes)
         # Save contructed model into a file for next step of pipeline
         joblib.dump(rf_model, self.rf_model_path)
 
 
-    def train_lr_model(self, dataset_classes, dataset_features):
-        # Construct model with Logistic regression classifier
-        lr_model = self.lr_classifier.fit(dataset_classes, dataset_features)
+    def train_lr_model(self, dataset_features, dataset_classes):
+        # Construct model with Logistic Regression classifier
+        lr_model = self.lr_classifier.fit(dataset_features, dataset_classes)
         # Save contructed model into a file for next step of pipeline
         joblib.dump(lr_model, self.lr_model_path)
