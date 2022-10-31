@@ -1,5 +1,7 @@
+from re import X
 import joblib
 import numpy as np
+import matplotlib.pyplot as plt
 import os
 from sklearn.metrics import auc, roc_curve, precision_score, recall_score
 
@@ -7,12 +9,14 @@ from sklearn.metrics import auc, roc_curve, precision_score, recall_score
 class Validator:
     validate_rf = False # Random forest model must be validated
     validate_lr = False # Logistic regression model must be validated
-    # Path to CSV file representing the model's validation dataset
-    validation_dataset_path = './validation_files_vars.csv'
-    # Random forest model dump file path
-    rf_model_path = './rf_model.dump'
-    # Logistic regression model dump file path
-    lr_model_path = './lr_model.dump'
+    # Path (without extension) to CSV file representing the model's validation dataset
+    validation_dataset_path = './validation_files_vars'
+    # Random forest model dump file path (without extension)
+    rf_model_path = './rf_model'
+    # Logistic regression model dump file path (without extension)
+    lr_model_path = './lr_model'
+    # Count of models to validate
+    models_count = 10
 
 
     def __init__(self, validate_rf, validate_lr):
@@ -21,53 +25,86 @@ class Validator:
 
 
     def validate_model(self):
-        if not (self.validate_rf or self.validate_lr or \
-                os.path.exists(self.validation_dataset_path)):
+        if not (self.validate_rf or self.validate_lr):
             return
 
-        validation_dataset_file = open(self.validation_dataset_path, 'r')
-        validation_dataset_line = validation_dataset_file.read().splitlines()
-        validation_dataset = [l.split(',') for l in validation_dataset_line]
-        features = [i[1:] for i in validation_dataset] # Features of each item in dataset
-        X_val = np.array([list(map(lambda f: float(f), fs)) for fs in features]) # Features in tensor format
-        classes = [i[0] for i in validation_dataset] # Classes of each item in dataset
-        y_val = np.array([float(c) for c in classes]) # Classes in tensor format
+        # Axis for line plots
+        x = np.array([i for i in range(1, self.models_count + 1)]) # One tick per model on X axis
+        auc = np.zeros((2, self.models_count)) # AUC per model per algorithm
+        precision = np.zeros((2, self.models_count)) # Precision per model per algorithm
+        recall = np.zeros((2, self.models_count)) # Recall per model per algorithm
 
-        if self.validate_rf:
-            self.validate_rf_model(X_val, y_val)
-        if self.validate_lr:
-            self.validate_lr_model(X_val, y_val)
+        # Validate X (X = models_count) previously constructed models
+        for i in range(1, self.models_count + 1):
+            dataset_path = self.validation_dataset_path + '_' + str(i) + '.csv'
+            if not os.path.exists(dataset_path):
+                break
+
+            dataset_file = open(dataset_path, 'r')
+            dataset = [l.split(',') for l in dataset_file.read().splitlines()]
+            features = [i[1:] for i in dataset] # Features of each item in dataset
+            X_val = np.array([list(map(lambda f: float(f), fs)) for fs in features]) # Features in tensor format
+            classes = [i[0] for i in dataset] # Classes of each item in dataset
+            y_val = np.array([float(c) for c in classes]) # Classes in tensor format
+
+            # Get AUC, precision and recall of each model of each algorithm
+            if self.validate_rf:
+                auc[0][i - 1], precision[0][i - 1], recall[0][i - 1] = self.validate_rf_model(X_val, y_val, i)
+            if self.validate_lr:
+                auc[1][i - 1], precision[1][i - 1], recall[1][i - 1] = self.validate_lr_model(X_val, y_val, i)
+
+        self.display_plot(x, 'AUC', auc) # Display line plot for AUC of each model
+        self.display_plot(x, 'Precision', precision) # Display line plot for precision of each model
+        self.display_plot(x, 'Recall', recall) # Display line plot for recall of each model
+        self.display_nomogram() # Display nomogram for visualizing impact of each metric
 
 
-    def print_scores(self, truths, predictions):
-        # Print AUC
+    def display_plot(self, x, y_label, Y):
+        plt.figure() # Initialize plot
+        plt.plot(x, Y[0], label = 'Random Forest') # Display line 1
+        plt.plot(x, Y[1], label = 'Logistic Regression') # Display line 2
+        plt.legend() # Display legend
+        plt.xlabel('Model') # Display label of X axis
+        plt.ylabel(y_label) # Display label of Y axis
+        plt.savefig(y_label + '_plot.png') # Save plot into a .png file
+
+
+    def display_nomogram(self):
+        print('TODO')
+
+
+    def calculate_scores(self, truths, predictions):
+        # Calculate ROC curve for AUC
         fpr, tpr, thresholds = roc_curve(truths, predictions)
-        print('AUC: ' + str(auc(fpr, tpr)))
-        # Print Precision
-        print('Precision: ' + str(precision_score(truths, predictions, zero_division = 0)))
-        # Print Recall
-        print('Recall: ' + str(recall_score(truths, predictions, zero_division = 0)))
+        # Calculate Precision
+        precision = precision_score(truths, predictions, zero_division = 0)
+        # Calculate Recall
+        recall = recall_score(truths, predictions, zero_division = 0)
+
+        return auc(fpr, tpr), precision, recall
 
 
-    def validate_rf_model(self, dataset_features, dataset_classes):
-        if not os.path.exists(self.rf_model_path):
+    def validate_rf_model(self, dataset_features, dataset_classes, model_idx):
+        model_path = self.rf_model_path + '_' + str(model_idx) + '.dump'
+        if not os.path.exists(model_path):
             return
 
         # Load model previously constructed with Random Forest classifier
-        rf_model = joblib.load(self.rf_model_path)
+        rf_model = joblib.load(model_path)
         # Predict validation set
         predictions = rf_model.predict(dataset_features)
         # Print performance scores
-        self.print_scores(dataset_classes, predictions)
+        return self.calculate_scores(dataset_classes, predictions)
 
 
-    def validate_lr_model(self, dataset_features, dataset_classes):
-        if not os.path.exists(self.lr_model_path):
+    def validate_lr_model(self, dataset_features, dataset_classes, model_idx):
+        model_path = self.lr_model_path + '_' + str(model_idx) + '.dump'
+        if not os.path.exists(model_path):
             return
 
         # Load model previously constructed with Logistic Regression classifier
-        lr_model = joblib.load(self.lr_model_path)
+        lr_model = joblib.load(model_path)
         # Predict validation set
         predictions = lr_model.predict(dataset_features)
         # Print performance scores
-        self.print_scores(dataset_classes, predictions)
+        return self.calculate_scores(dataset_classes, predictions)
