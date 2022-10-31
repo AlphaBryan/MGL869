@@ -56,7 +56,7 @@ class Validator:
         self.display_plot(x, 'AUC', auc) # Display line plot for AUC of each model
         self.display_plot(x, 'Precision', precision) # Display line plot for precision of each model
         self.display_plot(x, 'Recall', recall) # Display line plot for recall of each model
-        self.display_nomogram() # Display nomogram for visualizing impact of each metric
+        self.display_nomogram() # Display nomogram for visualizing importance of each metric
 
 
     def display_plot(self, x, y_label, Y):
@@ -70,7 +70,7 @@ class Validator:
 
 
     def display_nomogram(self):
-        print('TODO')
+        print('TODO: (average importance of metrics for all models of same algorithm ?)')
 
 
     def calculate_scores(self, truths, predictions):
