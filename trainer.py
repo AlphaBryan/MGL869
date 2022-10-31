@@ -11,7 +11,7 @@ class Trainer:
     train_rf = False # Random forest model must be trained
     train_lr = False # Logistic regression model must be trained
     # Path to CSV file representing the full dataset
-    dataset_path = './cleaned_files_vars.csv'
+    dataset_path = './files_vars_no_correlation.csv'
     # Path to CSV file representing the model's validation dataset
     validation_dataset_path = './validation_files_vars.csv'
     # Random forest classifier: parameters must be tuned
@@ -38,7 +38,7 @@ class Trainer:
         dataset_lines = dataset_file.read().splitlines()[1:] # Header is excluded
         # Dataset with dependant variable at index 0 and independent variables at indexes 1,...
         dataset = [l.split(',')[3:] for l in dataset_lines]
-        features = [i[1:] for i in dataset] # Features of each item in dataset
+        features = [i[2:] for i in dataset] # Features of each item in dataset
         X = np.array([list(map(lambda f: float(f if f else '0'), fs)) for fs in features]) # Features in tensor format
         classes = [i[0] for i in dataset] # Classes of each item in dataset
         y = np.array([float(c == 'True') for c in classes]) # Classes in tensor format
@@ -64,7 +64,7 @@ class Trainer:
 
 
     def train_lr_model(self, dataset_features, dataset_classes):
-        # Scale data features to help convergance
+        # Scale data features to help convergence
         scaled_dataset_features = StandardScaler().fit_transform(dataset_features)
         # Construct model with Logistic Regression classifier
         lr_model = self.lr_classsifier.fit(scaled_dataset_features, dataset_classes)
