@@ -1,6 +1,7 @@
 import joblib
 import numpy as np
 import os
+from sklearn.metrics import auc, roc_curve, precision_score, recall_score
 
 
 class Validator:
@@ -38,13 +39,26 @@ class Validator:
             self.validate_lr_model(X_val, y_val)
 
 
+    def print_scores(self, truths, predictions):
+        # Print AUC
+        fpr, tpr, thresholds = roc_curve(truths, predictions)
+        print('AUC: ' + str(auc(fpr, tpr)))
+        # Print Precision
+        print('Precision: ' + str(precision_score(truths, predictions, zero_division = 0)))
+        # Print Recall
+        print('Recall: ' + str(recall_score(truths, predictions, zero_division = 0)))
+
+
     def validate_rf_model(self, dataset_features, dataset_classes):
         if not os.path.exists(self.rf_model_path):
             return
 
         # Load model previously constructed with Random Forest classifier
         rf_model = joblib.load(self.rf_model_path)
-        print(rf_model)
+        # Predict validation set
+        predictions = rf_model.predict(dataset_features)
+        # Print performance scores
+        self.print_scores(dataset_classes, predictions)
 
 
     def validate_lr_model(self, dataset_features, dataset_classes):
@@ -53,3 +67,7 @@ class Validator:
 
         # Load model previously constructed with Logistic Regression classifier
         lr_model = joblib.load(self.lr_model_path)
+        # Predict validation set
+        predictions = lr_model.predict(dataset_features)
+        # Print performance scores
+        self.print_scores(dataset_classes, predictions)

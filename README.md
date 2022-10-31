@@ -10,6 +10,7 @@ Laboratoire du cours MGL869 de l'ÉTS
 - scikit-learn (https://pypi.org/project/scikit-learn/)
 - numpy (https://pypi.org/project/numpy/)
 - joblib (https://pypi.org/project/joblib/)
+- scipy (https://pypi.org/project/scipy/)
 
 # Prérequis Ubuntu 22.04.1 LTS
 - wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb

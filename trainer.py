@@ -15,7 +15,7 @@ class Trainer:
     # Path to CSV file representing the model's validation dataset
     validation_dataset_path = './validation_files_vars.csv'
     # Random forest classifier: parameters must be tuned
-    rf_classifier = RandomForestClassifier(max_depth = 2, random_state = 0)
+    rf_classifier = RandomForestClassifier(max_depth = 7, random_state = 0)
     # Logistic regression classifier: parameters must be tuned
     lr_classifier = LogisticRegression(max_iter = 5000, solver = 'lbfgs', random_state = 16)
     # Random forest model dump file path
