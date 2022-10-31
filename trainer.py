@@ -4,7 +4,7 @@ import os
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+
 
 class Trainer:
     train_rf = False # Random forest model must be trained
@@ -16,7 +16,7 @@ class Trainer:
     # Random forest classifier: parameters must be tuned
     rf_classifier = RandomForestClassifier(max_depth = 2, random_state = 0)
     # Logistic regression classifier: parameters must be tuned
-    lr_classifier = LogisticRegression(max_iter = 5000, solver = 'lbfgs', random_state = 16)
+    lr_classifier = LogisticRegression(max_iter = 500, solver = 'saga', random_state = 0)
     # Random forest model dump file path
     rf_model_path = './rf_model.dump'
     # Logistic regression model dump file path
@@ -55,17 +55,15 @@ class Trainer:
             self.train_lr_model(X_train, y_train)
 
 
-    def train_rf_model(self, dataset_classes, dataset_features):
+    def train_rf_model(self, dataset_features, dataset_classes):
         # Construct model with Random Forest classifier
-        rf_model = self.rf_classifier.fit(dataset_classes, dataset_features)
+        rf_model = self.rf_classifier.fit(dataset_features, dataset_classes)
         # Save contructed model into a file for next step of pipeline
         joblib.dump(rf_model, self.rf_model_path)
 
 
-    def train_lr_model(self, dataset_classes, dataset_features):
-        #Scale X_Train data to allow saga solver too converge
-        scaled_dataset_classes = StandardScaler().fit_transform(dataset_classes)
-        # Construct model with Logistic regression classifier
-        lr_model = self.lr_classifier.fit(scaled_dataset_classes, dataset_features)
+    def train_lr_model(self, dataset_features, dataset_classes):
+        # Construct model with Logistic Regression classifier
+        lr_model = self.lr_classifier.fit(dataset_features, dataset_classes)
         # Save contructed model into a file for next step of pipeline
         joblib.dump(lr_model, self.lr_model_path)
