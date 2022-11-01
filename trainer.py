@@ -1,29 +1,31 @@
 import joblib
 import numpy as np
 import os
-import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
 from sklearn.preprocessing import StandardScaler
-from matplotlib import pyplot
+
 
 class Trainer:
     train_rf = False # Random forest model must be trained
     train_lr = False # Logistic regression model must be trained
     # Path to CSV file representing the full dataset
-    dataset_path = './files_vars_no_correlation.csv'
     dataset_path = './cleaned_files_vars.csv'
-    # Path to CSV file representing the model's validation dataset
-    validation_dataset_path = './validation_files_vars.csv'
+    # Path (without extension) to CSV file representing the model's validation dataset
+    validation_dataset_path = './validation_files_vars'
     # Random forest classifier: parameters must be tuned
-    rf_classifier = RandomForestClassifier(n_estimators = 1000, max_depth = 10, random_state = 16)
+    rf_classifier = RandomForestClassifier(max_depth = 7, random_state = 0, warm_start = True)
     # Logistic regression classifier: parameters must be tuned
-    lr_classifier = LogisticRegression(max_iter = 50000, solver = 'lbfgs', random_state = 42)
-    # Random forest model dump file path
-    rf_model_path = './rf_model.dump'
-    # Logistic regression model dump file path
-    lr_model_path = './lr_model.dump'
+    lr_classifier = LogisticRegression(max_iter = 5000, solver = 'lbfgs', random_state = 16, warm_start = True)
+    # Random forest model dump file path (without extension)
+    rf_model_path = './rf_model'
+    # Random forest starting size
+    rf_model_start_size = 100
+    # Logistic regression model dump file path (without extension)
+    lr_model_path = './lr_model'
+    # Number of epochs (iterations) for model reinforcement
+    epochs = 10
 
 
     def __init__(self, train_rf, train_lr):
@@ -41,52 +43,36 @@ class Trainer:
         # Dataset with dependant variable at index 0 and independent variables at indexes 1,...
         dataset = [l.split(',')[3:] for l in dataset_lines]
         features = [i[1:] for i in dataset] # Features of each item in dataset
-        X = np.array([list(map(lambda f: float(f if f else '0'), fs)) for fs in features]) # Features in tensor format
+        X = np.array([list(map(lambda f: float(f if f else '0'), fs)) for fs in features], dtype = object) # Features in tensor format
         classes = [i[0] for i in dataset] # Classes of each item in dataset
         y = np.array([float(c == 'True') for c in classes]) # Classes in tensor format
-        # Split dataset into training and validation sets
-        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size = 0.3)
-        # Save validation set in a file for next step of pipeline
-        validation_dataset_file = open(self.validation_dataset_path, 'w')
-        for c, fs in zip(y_val, X_val):
-            validation_dataset_file.write(str(c) + ',' + ','.join([str(f) for f in fs]) + '\n')
-        validation_dataset_file.close()
+        # Split dataset into X (X = epochs) shuffled training and validation
+        for i in range(1, self.epochs + 1):
+            X_train, X_val, y_train, y_val = train_test_split(X, y, test_size = 0.3)
+            # Save validation set in a file for next step of pipeline
+            validation_dataset_file = open(self.validation_dataset_path + '_' + str(i) + '.csv', 'w')
+            for c, fs in zip(y_val, X_val):
+                validation_dataset_file.write(str(c) + ',' + ','.join([str(f) for f in fs]) + '\n')
+            validation_dataset_file.close()
 
-        if self.train_rf:
-            self.train_rf_model(X_train, y_train)
-        if self.train_lr:
-            self.train_lr_model(X_train, y_train)
+            if self.train_rf: # Train Random Forest model
+                self.train_rf_model(X_train, y_train, i)
+            if self.train_lr: # Train Logistic Regression model
+                self.train_lr_model(X_train, y_train, i)
 
 
-    def train_rf_model(self, dataset_features, dataset_classes):
+    def train_rf_model(self, dataset_features, dataset_classes, model_idx):
+        self.rf_classifier.set_params(n_estimators = self.rf_model_start_size * model_idx) # Increase forest's size
         # Construct model with Random Forest classifier
         rf_model = self.rf_classifier.fit(dataset_features, dataset_classes)
-        # Plot feature importance
-        self.plot_feature_importance_rf(rf_model.feature_importances_)
         # Save contructed model into a file for next step of pipeline
-        joblib.dump(rf_model, self.rf_model_path)
+        joblib.dump(rf_model, self.rf_model_path + '_' + str(model_idx) + '.dump')
 
 
-    def train_lr_model(self, dataset_features, dataset_classes):
+    def train_lr_model(self, dataset_features, dataset_classes, model_idx):
         # Scale data features to help convergence
         scaled_dataset_features = StandardScaler().fit_transform(dataset_features)
         # Construct model with Logistic Regression classifier
         lr_model = self.lr_classifier.fit(scaled_dataset_features, dataset_classes)
-        # Plot feature importance
-        self.plot_feature_importance_rf(lr_model.coef_[0])
         # Save contructed model into a file for next step of pipeline
-        joblib.dump(lr_model, self.lr_model_path)
-
-    def plot_feature_importance_rf(self, feature_importances):
-        # Get headers
-        file_header = open(self.dataset_path, 'r').readlines()[0]
-        importance_header = file_header.split(',')[4:]
-        # Create data object to plot
-        importances = pd.DataFrame(data={
-            'Attributes': importance_header,
-            'Importance': feature_importances})
-        # Plot the importances
-        pyplot.bar(x=importances['Attributes'], height=importances['Importance'])
-        pyplot.title('Feature importances', size=20)
-        pyplot.xticks(rotation='vertical')
-        pyplot.show()
+        joblib.dump(lr_model, self.lr_model_path + '_' + str(model_idx) + '.dump')

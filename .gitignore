@@ -130,13 +130,9 @@ dmypy.json
 
 # MGL869 specific
 bug_files.csv
-files_vars.csv
+*files_vars*.csv
 und_project/
 metrics.csv
 project.und/
-cleaned_files_vars.csv
-files_vars_no_dupes.csv
-validation_files_vars.csv
-files_vars_no_correlation.csv
-rf_model.dump
-lr_model.dump
+*_model*.dump
+*_plot.png
