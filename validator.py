@@ -75,23 +75,32 @@ class Validator:
         print('TODO: (average importance of metrics for all models of same algorithm ?)')
 
     def get_feature_importances(self):
-        if self.validate_rf:
-            model_path = self.rf_model_path + '_' + str(self.models_count) + '.dump'
-            if not os.path.exists(model_path):
-                return
+        lr_feature_data = []
+        rf_feature_data = []
 
-            # Load model previously constructed with Random Forest classifier
-            rf_model = joblib.load(model_path)
-            self.print_feature_importances(rf_model.feature_importances_, 'rf')
+        for i in range(1, self.models_count + 1):
+            if self.validate_rf:
+                model_path = self.rf_model_path + '_' + str(i) + '.dump'
+                if not os.path.exists(model_path):
+                    return
 
-        if self.validate_lr:
-            model_path = self.lr_model_path + '_' + str(self.models_count) + '.dump'
-            if not os.path.exists(model_path):
-                return
+                # Load model previously constructed with Random Forest classifier
+                rf_model = joblib.load(model_path)
+                rf_feature_data.append(rf_model.feature_importances_)
 
-            # Load model previously constructed with Random Forest classifier
-            lr_model = joblib.load(model_path)
-            self.print_feature_importances(lr_model.coef_[0], 'lr')
+            if self.validate_lr:
+                model_path = self.lr_model_path + '_' + str(self.models_count) + '.dump'
+                if not os.path.exists(model_path):
+                    return
+
+                # Load model previously constructed with Random Forest classifier
+                lr_model = joblib.load(model_path)
+                lr_feature_data.append(lr_model.coef_[0])
+
+        lr_feature_importances = np.array(lr_feature_data)
+        rf_feature_importances = np.array(rf_feature_data)
+        self.print_feature_importances(np.average(rf_feature_importances, axis=0), 'rf')
+        self.print_feature_importances(np.average(lr_feature_importances, axis=0), 'lr')
 
     def print_feature_importances(self, feature_importances, model):
         file_header = open(self.cleaned_dataset_path, 'r').readlines()[0]
@@ -101,9 +110,11 @@ class Validator:
             'Attributes': importance_header,
             'Importance': feature_importances})
         # Plot the importances
+        plt.figure()
         plt.bar(x=importances['Attributes'], height=importances['Importance'])
-        plt.title('Feature importances', size=20)
-        plt.xticks(rotation='vertical')
+        plt.title('Feature importances')
+        plt.xticks(rotation='vertical', size=3)
+        plt.tight_layout()
         plt.savefig(model + '_feature_importances.png')  # Save plot into a .png file
 
     def calculate_scores(self, truths, predictions):
