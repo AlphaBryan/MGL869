@@ -17,9 +17,9 @@ class Trainer:
     # Path (without extension) to CSV file representing the model's validation dataset
     validation_dataset_path = './validation_files_vars'
     # Random forest classifier: parameters must be tuned
-    rf_classifier = RandomForestClassifier(max_depth = 7, random_state = 0, warm_start = True)
+    rf_classifier = RandomForestClassifier(max_depth = 10, random_state = 42, warm_start = True)
     # Logistic regression classifier: parameters must be tuned
-    lr_classifier = LogisticRegression(max_iter = 5000, solver = 'lbfgs', random_state = 16, warm_start = True)
+    lr_classifier = LogisticRegression(max_iter = 50000, solver = 'lbfgs', random_state = 42, warm_start = True)
     # Random forest model dump file path (without extension)
     rf_model_path = './rf_model'
     # Random forest starting size
@@ -79,16 +79,3 @@ class Trainer:
         # Save contructed model into a file for next step of pipeline
         joblib.dump(lr_model, self.lr_model_path + '_' + str(model_idx) + '.dump')
 
-    def plot_feature_importance_rf(self, feature_importances):
-        # Get headers
-        file_header = open(self.dataset_path, 'r').readlines()[0]
-        importance_header = file_header.split(',')[4:]
-        # Create data object to plot
-        importances = pd.DataFrame(data={
-            'Attributes': importance_header,
-            'Importance': feature_importances})
-        # Plot the importances
-        pyplot.bar(x=importances['Attributes'], height=importances['Importance'])
-        pyplot.title('Feature importances', size=20)
-        pyplot.xticks(rotation='vertical')
-        pyplot.show()

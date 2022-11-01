@@ -3,6 +3,7 @@ import joblib
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import pandas as pd
 from sklearn.metrics import auc, roc_curve, precision_score, recall_score
 
 
@@ -11,6 +12,7 @@ class Validator:
     validate_lr = False # Logistic regression model must be validated
     # Path (without extension) to CSV file representing the model's validation dataset
     validation_dataset_path = './validation_files_vars'
+    cleaned_dataset_path = './cleaned_files_vars.csv'
     # Random forest model dump file path (without extension)
     rf_model_path = './rf_model'
     # Logistic regression model dump file path (without extension)
@@ -57,7 +59,7 @@ class Validator:
         self.display_plot(x, 'Precision', precision) # Display line plot for precision of each model
         self.display_plot(x, 'Recall', recall) # Display line plot for recall of each model
         self.display_nomogram() # Display nomogram for visualizing importance of each metric
-
+        self.get_feature_importances()
 
     def display_plot(self, x, y_label, Y):
         plt.figure() # Initialize plot
@@ -72,6 +74,37 @@ class Validator:
     def display_nomogram(self):
         print('TODO: (average importance of metrics for all models of same algorithm ?)')
 
+    def get_feature_importances(self):
+        if self.validate_rf:
+            model_path = self.rf_model_path + '_' + str(self.models_count) + '.dump'
+            if not os.path.exists(model_path):
+                return
+
+            # Load model previously constructed with Random Forest classifier
+            rf_model = joblib.load(model_path)
+            self.print_feature_importances(rf_model.feature_importances_, 'rf')
+
+        if self.validate_lr:
+            model_path = self.lr_model_path + '_' + str(self.models_count) + '.dump'
+            if not os.path.exists(model_path):
+                return
+
+            # Load model previously constructed with Random Forest classifier
+            lr_model = joblib.load(model_path)
+            self.print_feature_importances(lr_model.coef_[0], 'lr')
+
+    def print_feature_importances(self, feature_importances, model):
+        file_header = open(self.cleaned_dataset_path, 'r').readlines()[0]
+        importance_header = file_header.split(',')[4:]
+        # Create data object to plot
+        importances = pd.DataFrame(data={
+            'Attributes': importance_header,
+            'Importance': feature_importances})
+        # Plot the importances
+        plt.bar(x=importances['Attributes'], height=importances['Importance'])
+        plt.title('Feature importances', size=20)
+        plt.xticks(rotation='vertical')
+        plt.savefig(model + '_feature_importances.png')  # Save plot into a .png file
 
     def calculate_scores(self, truths, predictions):
         # Calculate ROC curve for AUC
