@@ -1,6 +1,8 @@
 import joblib
 import numpy as np
 import os
+import pandas as pd
+from matplotlib import pyplot
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, KFold
@@ -76,3 +78,17 @@ class Trainer:
         lr_model = self.lr_classifier.fit(scaled_dataset_features, dataset_classes)
         # Save contructed model into a file for next step of pipeline
         joblib.dump(lr_model, self.lr_model_path + '_' + str(model_idx) + '.dump')
+
+    def plot_feature_importance_rf(self, feature_importances):
+        # Get headers
+        file_header = open(self.dataset_path, 'r').readlines()[0]
+        importance_header = file_header.split(',')[4:]
+        # Create data object to plot
+        importances = pd.DataFrame(data={
+            'Attributes': importance_header,
+            'Importance': feature_importances})
+        # Plot the importances
+        pyplot.bar(x=importances['Attributes'], height=importances['Importance'])
+        pyplot.title('Feature importances', size=20)
+        pyplot.xticks(rotation='vertical')
+        pyplot.show()
