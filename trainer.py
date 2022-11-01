@@ -1,23 +1,25 @@
 import joblib
 import numpy as np
 import os
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-
+from matplotlib import pyplot
 
 class Trainer:
     train_rf = False # Random forest model must be trained
     train_lr = False # Logistic regression model must be trained
     # Path to CSV file representing the full dataset
     dataset_path = './files_vars_no_correlation.csv'
+    dataset_path = './cleaned_files_vars.csv'
     # Path to CSV file representing the model's validation dataset
     validation_dataset_path = './validation_files_vars.csv'
     # Random forest classifier: parameters must be tuned
-    rf_classifier = RandomForestClassifier(max_depth = 7, random_state = 0)
+    rf_classifier = RandomForestClassifier(n_estimators = 1000, max_depth = 10, random_state = 16)
     # Logistic regression classifier: parameters must be tuned
-    lr_classifier = LogisticRegression(max_iter = 5000, solver = 'lbfgs', random_state = 16)
+    lr_classifier = LogisticRegression(max_iter = 50000, solver = 'lbfgs', random_state = 42)
     # Random forest model dump file path
     rf_model_path = './rf_model.dump'
     # Logistic regression model dump file path
@@ -38,7 +40,7 @@ class Trainer:
         dataset_lines = dataset_file.read().splitlines()[1:] # Header is excluded
         # Dataset with dependant variable at index 0 and independent variables at indexes 1,...
         dataset = [l.split(',')[3:] for l in dataset_lines]
-        features = [i[2:] for i in dataset] # Features of each item in dataset
+        features = [i[1:] for i in dataset] # Features of each item in dataset
         X = np.array([list(map(lambda f: float(f if f else '0'), fs)) for fs in features]) # Features in tensor format
         classes = [i[0] for i in dataset] # Classes of each item in dataset
         y = np.array([float(c == 'True') for c in classes]) # Classes in tensor format
@@ -59,6 +61,8 @@ class Trainer:
     def train_rf_model(self, dataset_features, dataset_classes):
         # Construct model with Random Forest classifier
         rf_model = self.rf_classifier.fit(dataset_features, dataset_classes)
+        # Plot feature importance
+        self.plot_feature_importance_rf(rf_model.feature_importances_)
         # Save contructed model into a file for next step of pipeline
         joblib.dump(rf_model, self.rf_model_path)
 
@@ -67,6 +71,22 @@ class Trainer:
         # Scale data features to help convergence
         scaled_dataset_features = StandardScaler().fit_transform(dataset_features)
         # Construct model with Logistic Regression classifier
-        lr_model = self.lr_classsifier.fit(scaled_dataset_features, dataset_classes)
+        lr_model = self.lr_classifier.fit(scaled_dataset_features, dataset_classes)
+        # Plot feature importance
+        self.plot_feature_importance_rf(lr_model.coef_[0])
         # Save contructed model into a file for next step of pipeline
         joblib.dump(lr_model, self.lr_model_path)
+
+    def plot_feature_importance_rf(self, feature_importances):
+        # Get headers
+        file_header = open(self.dataset_path, 'r').readlines()[0]
+        importance_header = file_header.split(',')[4:]
+        # Create data object to plot
+        importances = pd.DataFrame(data={
+            'Attributes': importance_header,
+            'Importance': feature_importances})
+        # Plot the importances
+        pyplot.bar(x=importances['Attributes'], height=importances['Importance'])
+        pyplot.title('Feature importances', size=20)
+        pyplot.xticks(rotation='vertical')
+        pyplot.show()

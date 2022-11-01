@@ -1,5 +1,4 @@
 import math
-from statistics import correlation
 import pandas as pd
 from scipy.stats import spearmanr 
 
@@ -27,7 +26,16 @@ class DataCleaner:
 
         # Merge File, Class and Method rows of same File into one row
         cleaned_data = removed_duplicates.groupby(["Version", "CommitId", "Fichier", "ContientBogue"], as_index = False).first()
-        cleaned_data.to_csv(self.cleaned_files_vars_path, index = False)
+
+        # Remove columns not needed in our analysis
+        columns_to_remove = ["AltAvgLineBlank", "AltAvgLineCode", "AltAvgLineComment", "AltCountLineBlank", "AltCountLineCode", "AltCountLineComment", "CountClassCoupledModified",
+                            "CountDeclExecutableUnit", "CountDeclFile", "CountDeclFileCode", "CountDeclFileHeader", "CountDeclInstanceVariablePrivate", "CountDeclInstanceVariableProtected" ,
+                            "CountDeclInstanceVariablePublic", "CountDeclMethodAll", "CountDeclMethodConst", "CountDeclMethodFriend", "CountLineInactive",	"CountLinePreprocessor",
+                            "CountPathLog", "CountStmtEmpty", "Cyclomatic",	"CyclomaticModified", "CyclomaticStrict", "Essential", "Knots", "MaxEssential",	"MaxEssentialKnots",
+                            "MinEssentialKnots", "PercentLackOfCohesionModified"]
+
+        cleaned_data = cleaned_data.drop(columns_to_remove, axis=1)
+        cleaned_data.to_csv(self.cleaned_files_vars_path, index=False)
         cleaned_data = pd.read_csv(self.cleaned_files_vars_path)
 
         # Remove correlated metrics

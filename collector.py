@@ -137,7 +137,7 @@ class Collector:
         output_file_header = 'Version,CommitId,Fichier,ContientBogue,'
         subprocess.run([self.und_exe, self.und_create_commands_path])
         metrics_file_header = open(self.metrics_file_path, 'r').readlines()[0]
-        output_file_header += ','.join(metrics_file_header.split(',')[2:])
+        output_file_header += ','.join(metrics_file_header.split(',')[3:])
         output_file = open(self.files_vars_path, 'w')
         output_file.write(output_file_header)
         
