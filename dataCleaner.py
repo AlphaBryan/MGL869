@@ -40,7 +40,7 @@ class DataCleaner:
 
         # Remove correlated metrics
         data_columns = cleaned_data.keys()
-        data_metrics = list(data_columns[5:])
+        data_metrics = list(data_columns[4:])
 
         uncorrelated_metrics = []
         for i in range(len(data_metrics)):
@@ -60,5 +60,5 @@ class DataCleaner:
 
         # Save CSV data file without correlated metrics
         cleaned_data.to_csv(self.files_vars_no_correlation_path, 
-                            columns = list(data_columns[0:5]) + uncorrelated_metrics, index = False)
+                            columns = list(data_columns[0:4]) + uncorrelated_metrics, index = False)
 

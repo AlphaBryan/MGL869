@@ -47,7 +47,7 @@ class Trainer:
         features = [i[1:] for i in dataset] # Features of each item in dataset
         X = np.array([list(map(lambda f: float(f if f else '0'), fs)) for fs in features], dtype = object) # Features in tensor format
         classes = [i[0] for i in dataset] # Classes of each item in dataset
-        y = np.array([float(c == 'True') for c in classes]) # Classes in tensor format
+        y = np.array([float(c.lower() == 'true') for c in classes]) # Classes in tensor format
         # Split dataset into X (X = epochs) shuffled training and validation
         for i in range(1, self.epochs + 1):
             X_train, X_val, y_train, y_val = train_test_split(X, y, test_size = 0.3)
@@ -56,7 +56,7 @@ class Trainer:
             for c, fs in zip(y_val, X_val):
                 validation_dataset_file.write(str(c) + ',' + ','.join([str(f) for f in fs]) + '\n')
             validation_dataset_file.close()
-
+            
             if self.train_rf: # Train Random Forest model
                 self.train_rf_model(X_train, y_train, i)
             if self.train_lr: # Train Logistic Regression model

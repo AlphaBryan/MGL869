@@ -136,3 +136,4 @@ metrics.csv
 project.und/
 *_model*.dump
 *_plot.png
+*_feature_importances.png

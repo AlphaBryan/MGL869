@@ -12,6 +12,7 @@ class Validator:
     validate_lr = False # Logistic regression model must be validated
     # Path (without extension) to CSV file representing the model's validation dataset
     validation_dataset_path = './validation_files_vars'
+    # Path to CSV file representing the training dataset: for features importance evaluation
     cleaned_dataset_path = './cleaned_files_vars.csv'
     # Random forest model dump file path (without extension)
     rf_model_path = './rf_model'
@@ -61,6 +62,7 @@ class Validator:
         self.display_nomogram() # Display nomogram for visualizing importance of each metric
         self.get_feature_importances()
 
+
     def display_plot(self, x, y_label, Y):
         plt.figure() # Initialize plot
         plt.plot(x, Y[0], label = 'Random Forest') # Display line 1
@@ -73,6 +75,7 @@ class Validator:
 
     def display_nomogram(self):
         print('TODO: (average importance of metrics for all models of same algorithm ?)')
+
 
     def get_feature_importances(self):
         lr_feature_data = []
@@ -102,6 +105,7 @@ class Validator:
         self.print_feature_importances(np.average(rf_feature_importances, axis=0), 'rf')
         self.print_feature_importances(np.average(lr_feature_importances, axis=0), 'lr')
 
+
     def print_feature_importances(self, feature_importances, model):
         file_header = open(self.cleaned_dataset_path, 'r').readlines()[0]
         importance_header = file_header.split(',')[4:]
@@ -116,6 +120,7 @@ class Validator:
         plt.xticks(rotation='vertical', size=3)
         plt.tight_layout()
         plt.savefig(model + '_feature_importances.png')  # Save plot into a .png file
+
 
     def calculate_scores(self, truths, predictions):
         # Calculate ROC curve for AUC
