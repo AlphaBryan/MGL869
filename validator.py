@@ -59,7 +59,6 @@ class Validator:
         self.display_plot(x, 'AUC', auc) # Display line plot for AUC of each model
         self.display_plot(x, 'Precision', precision) # Display line plot for precision of each model
         self.display_plot(x, 'Recall', recall) # Display line plot for recall of each model
-        self.display_nomogram() # Display nomogram for visualizing importance of each metric
         self.get_feature_importances()
 
 
@@ -71,10 +70,6 @@ class Validator:
         plt.xlabel('Model') # Display label of X axis
         plt.ylabel(y_label) # Display label of Y axis
         plt.savefig(y_label + '_plot.png') # Save plot into a .png file
-
-
-    def display_nomogram(self):
-        print('TODO: (average importance of metrics for all models of same algorithm ?)')
 
 
     def get_feature_importances(self):
