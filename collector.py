@@ -5,6 +5,9 @@ import re
 import subprocess
 import urllib.request as req
 from xml.etree.ElementTree import parse
+import time
+# from subprocess import Popen, TimeoutExpired
+from subprocess import Popen, PIPE, TimeoutExpired, DEVNULL
 
 
 class Collector:
@@ -19,15 +22,16 @@ class Collector:
     # Git repository of Hive project
     git_repo_name = 'hive'
     git_remote_repo_path = 'https://github.com/apache/' + git_repo_name
-    git_local_repo_folder = '../'
+    # git_local_repo_folder = '../'
+    git_local_repo_folder = 'C:/Users/elwin/OneDrive/Documents/ETS/mglDevops/'
     git_local_repo_path = git_local_repo_folder + git_repo_name
     # Path to CSV file listing versions per file per bug
     bug_files_path = './bug_files.csv'
     # Path to CSV file listing independent variables per file's versions
     files_vars_path = './files_vars.csv'
     # Path to Understand .exe
-    und_exe = '../scitools/bin/linux64/und'
-    # und_exe = 'C:/Program Files/SciTools/bin/pc-win64/und.exe'
+    # und_exe = '../scitools/bin/linux64/und'
+    und_exe = 'C:/Program Files/SciTools/bin/pc-win64/und.exe'
     # Path to Understand commands files
     und_create_commands_path = './undCreateCommands.txt'
     und_analyze_commands_path = './undAnalyzeCommands.txt'
@@ -126,8 +130,11 @@ class Collector:
 
     
     def collect_vars(self):
+        print('Start collect vars')
         if not (os.path.exists(self.bug_files_path) and \
                 os.path.exists(self.git_local_repo_path)):
+            print('collect vars Forced stop')
+            
             return
 
         # Previously collected bugs
@@ -147,6 +154,7 @@ class Collector:
 
         # Iterate over tags of HIVE's versions 2.0.0 and more: takes severals hours
         for tag in git_repo.tags: 
+            print('Iteration tag:',tag)
             version = self.parse_version(tag.name) # HIVE's version related to tag
             if not version or int(version[0]) < 2:
                 continue
@@ -154,13 +162,29 @@ class Collector:
             git_repo.git.checkout(tag.commit.hexsha, force = True) # Restore local repo to tag's commit
             
             # Generate metrics with Understand
-            subprocess.run([self.und_exe, self.und_analyze_commands_path])
+            print('Process Generate metrics start for tag:',tag)
+            start_time = time.time()
+            try:
+                process = Popen([self.und_exe, self.und_analyze_commands_path], stdout=DEVNULL, stderr=DEVNULL)
+                # Wait for one hour
+                stdout, stderr = process.communicate(timeout=3600)
+            except TimeoutExpired:
+                process.kill()
+                stdout, stderr = process.communicate()
+                print("The command took too long to run and was terminated.")
+            end_time = time.time()
+            execution_time = end_time - start_time
+            print(f"The command took {execution_time} seconds to run.")
+            print('Process Generate metrics end for tag:',tag)
+
             metrics_lines = open(self.metrics_file_path, 'r').readlines()
             if len(metrics_lines) < 1: # No metric was generated
                 continue
 
             for line in metrics_lines[1:]:
                 line_values = line.split(',')
+                if len(line_values) < 3:  # Make sure there are at least 3 elements
+                    continue
                 if line_values[0] not in ('File', 'Method', 'Class'): # Only consider File, Method and Class metrics
                     continue
 

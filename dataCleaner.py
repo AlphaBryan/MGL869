@@ -20,24 +20,29 @@ class DataCleaner:
             return
 
         # Remove duplicated rows
-        files_vars = pd.read_csv(file_to_clean)
+        files_vars = pd.read_csv(file_to_clean,on_bad_lines='skip', sep=';')
         removed_duplicates = files_vars.drop_duplicates()
         removed_duplicates.to_csv(self.files_vars_no_dupes_path, index = False)
+        print(removed_duplicates.columns)
 
         # Merge File, Class and Method rows of same File into one row
         cleaned_data = removed_duplicates.groupby(["Version", "CommitId", "Fichier", "ContientBogue"], as_index = False).first()
 
-        # Remove columns not needed in our analysis
+        # # Remove columns not needed in our analysis
         columns_to_remove = ["AltAvgLineBlank", "AltAvgLineCode", "AltAvgLineComment", "AltCountLineBlank", "AltCountLineCode", "AltCountLineComment", "CountClassCoupledModified",
                             "CountDeclExecutableUnit", "CountDeclFile", "CountDeclFileCode", "CountDeclFileHeader", "CountDeclInstanceVariablePrivate", "CountDeclInstanceVariableProtected" ,
                             "CountDeclInstanceVariablePublic", "CountDeclMethodAll", "CountDeclMethodConst", "CountDeclMethodFriend", "CountLineInactive",	"CountLinePreprocessor",
                             "CountPathLog", "CountStmtEmpty", "Cyclomatic",	"CyclomaticModified", "CyclomaticStrict", "Essential", "Knots", "MaxEssential",	"MaxEssentialKnots",
                             "MinEssentialKnots", "PercentLackOfCohesionModified"]
 
+        columns_to_remove = [col for col in columns_to_remove if col in cleaned_data.columns]
+
         cleaned_data = cleaned_data.drop(columns_to_remove, axis=1)
         cleaned_data.to_csv(self.cleaned_files_vars_path, index=False)
         cleaned_data = pd.read_csv(self.cleaned_files_vars_path)
-
+        cleaned_data = cleaned_data.loc[:, ~cleaned_data.columns.str.startswith('Unnamed')]
+        cleaned_data.to_csv(self.cleaned_files_vars_path, index=False)
+        
         # Remove correlated metrics
         data_columns = cleaned_data.keys()
         data_metrics = list(data_columns[4:])

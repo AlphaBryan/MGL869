@@ -10,9 +10,11 @@ class Main:
     dataCleaner = None
     trainer = None
     validator = None
-
+    LICENSE_CODE  ='lA96Lxsg32B7giW2'
     def init_collector(self, bugs_to_collect, vars_to_collect):
         self.collector = Collector(bugs_to_collect, vars_to_collect)
+        # collector.collect_vars()
+
 
     def init_data_cleaner(self, clean_file):
         self.dataCleaner = DataCleaner(clean_file)
@@ -41,8 +43,8 @@ if __name__ == "__main__":
     main = Main()
     args = sys.argv[1:]
 
-    bugs_to_collect = '-cb' in args
-    vars_to_collect = '-cv' in args
+    bugs_to_collect = '-cb*' in args
+    vars_to_collect = '-cv*' in args
     clean_file = '-cf' in args
     train_rf = '-rf' in args
     train_lr = '-lr' in args
