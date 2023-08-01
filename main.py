@@ -44,7 +44,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     bugs_to_collect = '-cb*' in args
-    vars_to_collect = '-cv*' in args
+    vars_to_collect = '-cv' in args
     clean_file = '-cf' in args
     train_rf = '-rf' in args
     train_lr = '-lr' in args

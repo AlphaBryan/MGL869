@@ -13,7 +13,7 @@ class Validator:
     # Path (without extension) to CSV file representing the model's validation dataset
     validation_dataset_path = './validation_files_vars'
     # Path to CSV file representing the training dataset: for features importance evaluation
-    cleaned_dataset_path = './cleaned_files_vars.csv'
+    cleaned_dataset_path = './finale_vars_r.d.csv'
     # Random forest model dump file path (without extension)
     rf_model_path = './rf_model'
     # Logistic regression model dump file path (without extension)

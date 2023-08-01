@@ -13,7 +13,7 @@ class Trainer:
     train_rf = False # Random forest model must be trained
     train_lr = False # Logistic regression model must be trained
     # Path to CSV file representing the full dataset
-    dataset_path = './cleaned_files_vars.csv'
+    dataset_path = './finale_vars_r.d.csv'
     # Path (without extension) to CSV file representing the model's validation dataset
     validation_dataset_path = './validation_files_vars'
     # Random forest classifier: parameters must be tuned

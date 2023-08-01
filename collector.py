@@ -167,7 +167,7 @@ class Collector:
             try:
                 process = Popen([self.und_exe, self.und_analyze_commands_path], stdout=DEVNULL, stderr=DEVNULL)
                 # Wait for one hour
-                stdout, stderr = process.communicate(timeout=3600)
+                stdout, stderr = process.communicate(timeout=5400)
             except TimeoutExpired:
                 process.kill()
                 stdout, stderr = process.communicate()
