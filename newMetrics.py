@@ -104,16 +104,13 @@ def get_file_path_from_name(file_name, version):
     
     return file_name
 
-
+# WORKING
 # opitmisation possible, get le vrai version et file path dans au debut et pas a chaque fois
 def get_added_deleted_lines(file_path, prev_version, version):
-    git_version = map_version_to_git_tag(version)
-    file_path = get_file_path_from_name(file_path, git_version) 
+    # git_version = map_version_to_git_tag(version)
+    # file_path = get_file_path_from_name(file_path, git_version) 
     prev_git_version = map_version_to_git_tag(prev_version)
-    # prev_git_version = '1.2.1'
-    # print('get_added_deleted_lines:', file_path, prev_git_version, git_version)
-    result = subprocess.run(['git', 'diff', '--numstat', prev_git_version, git_version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
-    print ('get_added_deleted_lines:', result)
+    result = subprocess.run(['git', 'diff', '--numstat', prev_git_version, version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
     lines = result.stdout.split('\n')
     added, deleted = 0, 0
     for line in lines:
@@ -123,31 +120,34 @@ def get_added_deleted_lines(file_path, prev_version, version):
             deleted += int(parts[1])
     return added, deleted
 
-def get_bug_fixing_commits(file_path, version):
-    file_path = get_file_path_from_name(file_path, version) 
-    git_version = map_version_to_git_tag(version)
-    keywords = ["fix", "bug", "issue", "patch"]
-    grep_str = '|'.join(keywords)
-    result = subprocess.run(['git', 'log', '--oneline', '--grep=' + grep_str, git_version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
-    return len(result.stdout.split('\n')) - 1
+# WORKING
+def get_bug_fixing_commits(file_path, version): 
+    # keywords = ["fix", "bug", "patch", "error", "crash", "problem", "defect", "fault", "repair", "should"]
+    command = f'git log --oneline --grep="fix\|bug\|patch\|error\|crash\|problem\|defect\|fault\|repair\|should" {version} -- {file_path}'
+    result = subprocess.run(command, capture_output=True, text=True, encoding='utf-8')
+    num_commits = len(result.stdout.split('\n')) - 1
+    return num_commits
+
+def get_commits_changing_file(file_path, version):
+    command = f'git log --oneline {version} -- {file_path}'
+    result = subprocess.run(command, capture_output=True, text=True, encoding='utf-8')
+    num_commits = len(result.stdout.split('\n')) - 1
+    return num_commits
+
 
 def get_avg_time_between_commits(file_path, version):
-    file_path = get_file_path_from_name(file_path, version)
-    git_version = map_version_to_git_tag(version)
-    result = subprocess.run(['git', 'log', '--pretty=%ct', git_version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
+    result = subprocess.run(['git', 'log', '--pretty=%ct', version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
     timestamps = [int(t) for t in result.stdout.split('\n') if t]
     diffs = [timestamps[i] - timestamps[i+1] for i in range(len(timestamps)-1)]
     return 0 if not diffs else sum(diffs) / len(diffs)
 
 
 def get_developer_expertise(file_path, version):
-    file_path = get_file_path_from_name(file_path, version)
-    git_version = map_version_to_git_tag(version)
-    result = subprocess.run(['git', 'log', '--pretty=%an', git_version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
+    result = subprocess.run(['git', 'log', '--pretty=%an', version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
     devs = set(result.stdout.split('\n'))
     expertise = {}
     for dev in devs:
-        dev_result = subprocess.run(['git', 'log', '--oneline', git_version, '--author='+dev], capture_output=True, text=True, encoding='utf-8')
+        dev_result = subprocess.run(['git', 'log', '--oneline', version, '--author='+dev], capture_output=True, text=True, encoding='utf-8')
         if dev_result.stdout is not None:
             expertise[dev] = len(dev_result.stdout.split('\n')) - 1
 
@@ -156,20 +156,10 @@ def get_developer_expertise(file_path, version):
     else:
         return 0, 0
 
-
-def get_commits_changing_file(file_path, version):
-    file_path = get_file_path_from_name(file_path, version)
-    git_version = map_version_to_git_tag(version)
-    result = subprocess.run(['git', 'log', '--oneline', git_version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
-    return len(result.stdout.split('\n')) - 1
-
 def get_developers_changing_file(file_path, version):
-    file_path = get_file_path_from_name(file_path, version)
-    git_version = map_version_to_git_tag(version)
-    result = subprocess.run(['git', 'log', '--pretty=%an', git_version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
+    result = subprocess.run(['git', 'log', '--pretty=%an', version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
     devs = set(result.stdout.split('\n'))
     return len(devs)
-
 
 def main():
     git_local_repo_path = 'C:/Users/bryan/Documents/GitHub/hive'
@@ -187,12 +177,16 @@ def main():
         version = row['Version']
         prev_version = get_previous_version(version)
     
-        df.at[index, 'AddedLines'], df.at[index, 'DeletedLines'] = get_added_deleted_lines(file_path, prev_version, version)
-        df.at[index, 'NumCommits'] = get_commits_changing_file(file_path, version)
-        df.at[index, 'BugFixingCommits'] = get_bug_fixing_commits(file_path, version)
-        df.at[index, 'DevelopersCount'] = get_developers_changing_file(file_path, version)
-        df.at[index, 'AvgTimeBetweenCommits'] = get_avg_time_between_commits(file_path, version)
-        df.at[index, 'AvgDeveloperExpertise'], df.at[index, 'MinDeveloperExpertise'] = get_developer_expertise(file_path, version)
+        git_version = map_version_to_git_tag(version)
+        file_path = get_file_path_from_name(file_path, git_version) 
+        print(file_path)
+        
+        df.at[index, 'AddedLines'], df.at[index, 'DeletedLines'] = get_added_deleted_lines(file_path, prev_version, git_version) # Lignes ajoutées et supprimées
+        df.at[index, 'NumCommits'] = get_commits_changing_file(file_path, git_version) # Commits qui ont modifié le fichier
+        df.at[index, 'BugFixingCommits'] = get_bug_fixing_commits(file_path, git_version) # Commits qui ont fix un bug
+        df.at[index, 'DevelopersCount'] = get_developers_changing_file(file_path, git_version) #Dev qui ont modifié le fichier
+        df.at[index, 'AvgTimeBetweenCommits'] = get_avg_time_between_commits(file_path, git_version) # Temps moyen entre les commits
+        df.at[index, 'AvgDeveloperExpertise'], df.at[index, 'MinDeveloperExpertise'] = get_developer_expertise(file_path, git_version) # Expertise des devs qui ont modifié le fichier
         
     output_path = 'C:/Users/bryan/Documents/GitHub/ETS/MGL869/cleaned_files_newMetrics.csv'
     df.to_csv(output_path, index=False)
