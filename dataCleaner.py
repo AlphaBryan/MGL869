@@ -20,7 +20,7 @@ class DataCleaner:
             return
 
         # Remove duplicated rows
-        files_vars = pd.read_csv(file_to_clean,on_bad_lines='skip', sep=';')
+        files_vars = pd.read_csv(file_to_clean,on_bad_lines='skip', sep=',')
         removed_duplicates = files_vars.drop_duplicates()
         removed_duplicates.to_csv(self.files_vars_no_dupes_path, index = False)
         print(removed_duplicates.columns)

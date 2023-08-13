@@ -1,263 +1,202 @@
-import math
 import pandas as pd
-import git
+import subprocess
+import os
+from datetime import datetime
 
-class CollectNewMetrics:
-    def __init__(self, cleaned_files_vars_path, git_local_repo_path):
-        self.cleaned_files_vars_path = cleaned_files_vars_path
-        self.git_local_repo_path = git_local_repo_path
+# Le mapping des versions vers les noms de tag Git
+version_mapping = {
+    "versions": {
+        "1.2.1": ["release-1.2.1"],
+        "2.0.0": ["release-2.0.0"],
+        "2.0.1": ["release-2.0.1"],
+        "2.1.0": ["release-2.1.0"],
+        "2.2.0": ["release-2.2.0"],
+        "2.3.0": ["release-2.3.0"],
+        "2.3.1": ["release-2.3.1"],
+        "2.3.2": ["release-2.3.2"],
+        "2.3.3": ["release-2.3.3"],
+        "2.3.4": ["release-2.3.4"],
+        "2.3.5": ["release-2.3.5", "release-2.3.5-rc0"],
+        "2.3.6": ["release-2.3.6"],
+        "2.3.7": ["release-2.3.7"],
+        "2.3.8": ["release-2.3.8", "release-2.3.8-rc0", "release-2.3.8-rc1", "release-2.3.8-rc2", "release-2.3.8-rc3"],
+        "2.3.9": ["release-2.3.9", "release-2.3.9-rc0"],
+        "2.4.0": ["rel/storage-release-2.4.0"],
+        "2.5.0": ["rel/storage-release-2.5.0"],
+        "2.6.0": ["rel/storage-release-2.6.0", "rel/storage-release-2.6.1"],
+        "2.7.0": ["rel/storage-release-2.7.0-rc0", "rel/storage-release-2.7.0-rc1"],
+        "2.7.2": ["rel/storage-release-2.7.2", "rel/storage-release-2.7.2-rc0", "rel/storage-release-2.7.2-rc1", ],
+        "2.7.3": ["rel/storage-release-2.7.3", "rel/storage-release-2.7.3-rc0", "rel/storage-release-2.7.3-rc1", "rel/storage-release-2.7.3-rc2"],
+        "2.8.0": ["storage-release-2.8.0-rc0"], 
+        "2.8.1": ["storage-release-2.8.1", "storage-release-2.8.1-rc0", "storage-release-2.8.1-rc1", "storage-release-2.8.1-rc2"],
+        "2.9.0": [],
+        "3.0.0": ["rel/release-3.0.0", "rel/standalone-metastore-release-3.0.0"],
+        "3.1.0": ["rel/release-3.1.0"],
+        "3.1.2": ["rel/release-3.1.2-rc0"],
+        "3.1.3": ["rel/release-3.1.3-rc0", "rel/release-3.1.3-rc1", "rel/release-3.1.3-rc2", "rel/release-3.1.3-rc3"],
+        "3.2.0": [],
+        "3.3.0": [],
+        "3.4.0": [],
+        "3.5.0": [],
+        "3.6.0": [],
+        "3.7.0": [],
+        "3.8.0": [],
+        "3.9.0": [],
+        "4.0.0": ["rel/release-4.0.0-alpha-1", "rel/release-4.0.0-alpha-2", "rel/release-4.0.0-beta-1-rc0"]
+    }
+}
 
-    def count_commits_before(self, commits_list, current_commit_id):
-        commit_index = None
-        for index, commit_id in enumerate(commits_list):
-            if commit_id == current_commit_id:
-                commit_index = index
-                break
+def get_previous_version(version):
+    version_parts = version.split('.')
+    last_digit = int(version_parts[-1])
+    
+    if last_digit > 0:
+        version_parts[-1] = str(last_digit - 1)
+        return '.'.join(version_parts)
+    else:
+        for mapped_version, tag_names in version_mapping['versions'].items():
+            if version in tag_names:
+                index = tag_names.index(version)
+                if index > 0:
+                    return tag_names[index - 1]
+        # Si aucune version précédente n'est trouvée, utilisez la version 1.2.2
+        return "1.2.1"
 
-        if commit_index is None or commit_index == 0:
-            return 0
+def get_output_from_command(command):
+    result = subprocess.run(command, capture_output=True, text=True, shell=True, encoding='utf-8')
+    # print('get_output_from_command:', result)
+    return result.stdout.encode('utf-8').decode('utf-8')
 
-        previous_commit_id = commits_list[commit_index - 1]
-        commits_before_version = list(self.git_repo.iter_commits('{}..{}'.format(previous_commit_id, current_commit_id)))
-        return len(commits_before_version)
+def map_version_to_git_tag(version):
+    for mapped_version, tag_names in version_mapping['versions'].items():
+        # print('map_version_to_git_tag:', mapped_version, tag_names)
+        if mapped_version == version:  # Compare with the input version
+            # print('map_version_to_git_tag  ss :', mapped_version== version)
+            return tag_names[0]
+            # for tag_name in tag_names:
+            #     command = f'git rev-parse --verify --quiet {tag_name}'
+            #     result = get_output_from_command(command)
+            #     if result.strip() != "":
+            #         return tag_name
+    return None  # Si aucun tag ne correspond
 
-    def calculate_new_metrics(self):
-        cleaned_data = pd.read_csv(self.cleaned_files_vars_path)
-        self.git_repo = git.Repo(self.git_local_repo_path)
+# def map_version_to_git_tag(version):
+#     for mapped_version, tag_names in version_mapping['versions'].items():
+#         if mapped_version == version:  # Compare with the input version
+#             print('map_version_to_git_tag:', mapped_version, tag_names)
+#             # for tag_name in tag_names:
+#             #     command = f'git rev-parse --verify --quiet {tag_name}'
+#             #     result = get_output_from_command(command)
+#             #     if result.strip() != "":
+#             #         return tag_name
+#             # break  # Stop searching after finding a match
+#     return None  # If no matching tag is found
 
-        # Function to calculate the number of lines added and deleted for each version and file
-        def count_lines_added_deleted(file_data):
-            file_data['LinesAdded'] = file_data['CountLineCode'] - file_data['AltCountLineCode']
-            file_data['LinesDeleted'] = file_data['AltCountLineCode'] - file_data['CountLineCode']
-            return file_data
+def get_file_path_from_name(file_name, version):
+    command = ['git', 'ls-tree', '-r', version]
+    result = subprocess.run(command, capture_output=True, text=True, encoding='utf-8')
+    lines = result.stdout.strip().split('\n')
+    
+    for line in lines:
+        parts = line.split()
+        if len(parts) >= 4 and file_name in parts[3]:
+            return parts[3]  
+    
+    return file_name
 
-        # Function to count the number of commits that changed the file in each version
-        def count_commits_per_version(file_data):
-            version_commits_count = file_data.groupby('Version')['CommitId'].nunique().reset_index()
-            version_commits_count.rename(columns={'CommitId': 'CommitsChanged'}, inplace=True)
-            file_data = pd.merge(file_data, version_commits_count, on='Version', how='left')
-            return file_data
 
-        # Function to count the number of bug-fixing commits per version and file
-        def count_bug_fixing_commits(file_data):
-            git_repo = git.Repo(self.git_local_repo_path)
-            bug_keywords = ["fix", "bug"]
-            file_data['BugFixingCommits'] = 0
+# opitmisation possible, get le vrai version et file path dans au debut et pas a chaque fois
+def get_added_deleted_lines(file_path, prev_version, version):
+    git_version = map_version_to_git_tag(version)
+    file_path = get_file_path_from_name(file_path, git_version) 
+    prev_git_version = map_version_to_git_tag(prev_version)
+    # prev_git_version = '1.2.1'
+    # print('get_added_deleted_lines:', file_path, prev_git_version, git_version)
+    result = subprocess.run(['git', 'diff', '--numstat', prev_git_version, git_version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
+    print ('get_added_deleted_lines:', result)
+    lines = result.stdout.split('\n')
+    added, deleted = 0, 0
+    for line in lines:
+        parts = line.split()
+        if len(parts) == 3:
+            added += int(parts[0])
+            deleted += int(parts[1])
+    return added, deleted
 
-            for index, row in file_data.iterrows():
-                file_path = row['Fichier']
-                version = row['Version']
-                commit_id = row['CommitId']
+def get_bug_fixing_commits(file_path, version):
+    file_path = get_file_path_from_name(file_path, version) 
+    git_version = map_version_to_git_tag(version)
+    keywords = ["fix", "bug", "issue", "patch"]
+    grep_str = '|'.join(keywords)
+    result = subprocess.run(['git', 'log', '--oneline', '--grep=' + grep_str, git_version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
+    return len(result.stdout.split('\n')) - 1
 
-                file_commits = git_repo.iter_commits('--all', paths=file_path)
+def get_avg_time_between_commits(file_path, version):
+    file_path = get_file_path_from_name(file_path, version)
+    git_version = map_version_to_git_tag(version)
+    result = subprocess.run(['git', 'log', '--pretty=%ct', git_version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
+    timestamps = [int(t) for t in result.stdout.split('\n') if t]
+    diffs = [timestamps[i] - timestamps[i+1] for i in range(len(timestamps)-1)]
+    return 0 if not diffs else sum(diffs) / len(diffs)
 
-                for commit in file_commits:
-                    if commit.hexsha == commit_id:  # Skip current commit
-                        continue
 
-                    commit_message = commit.message.lower()
-                    for keyword in bug_keywords:
-                        if keyword in commit_message:
-                            file_data.at[index, 'BugFixingCommits'] += 1
-                            break
+def get_developer_expertise(file_path, version):
+    file_path = get_file_path_from_name(file_path, version)
+    git_version = map_version_to_git_tag(version)
+    result = subprocess.run(['git', 'log', '--pretty=%an', git_version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
+    devs = set(result.stdout.split('\n'))
+    expertise = {}
+    for dev in devs:
+        dev_result = subprocess.run(['git', 'log', '--oneline', git_version, '--author='+dev], capture_output=True, text=True, encoding='utf-8')
+        if dev_result.stdout is not None:
+            expertise[dev] = len(dev_result.stdout.split('\n')) - 1
 
-            return file_data
+    if len(expertise) > 0:
+        return sum(expertise.values()) / len(expertise), min(expertise.values())
+    else:
+        return 0, 0
 
-        # Function to count the number of commits changing the file in current version and all previous versions
-        def count_commits_before_version(file_data):
-            version_commits = file_data.groupby('Version')['CommitId'].apply(list).reset_index()
-            version_commits.rename(columns={'CommitId': 'CommitsList'}, inplace=True)
-            file_data = pd.merge(file_data, version_commits, on='Version', how='left')
 
-            file_data['CommitsBeforeVersion'] = file_data.apply(
-                lambda row: self.count_commits_before(row['CommitsList'], row['CommitId']), axis=1
-            )
+def get_commits_changing_file(file_path, version):
+    file_path = get_file_path_from_name(file_path, version)
+    git_version = map_version_to_git_tag(version)
+    result = subprocess.run(['git', 'log', '--oneline', git_version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
+    return len(result.stdout.split('\n')) - 1
 
-            file_data.drop('CommitsList', axis=1, inplace=True)
-            return file_data
+def get_developers_changing_file(file_path, version):
+    file_path = get_file_path_from_name(file_path, version)
+    git_version = map_version_to_git_tag(version)
+    result = subprocess.run(['git', 'log', '--pretty=%an', git_version, '--', file_path], capture_output=True, text=True, encoding='utf-8')
+    devs = set(result.stdout.split('\n'))
+    return len(devs)
 
-        # Function to count the number of developers changing the file in each version
-        def count_unique_developers_per_version(file_data):
-            version_dev_count = file_data.groupby('Version')['CommitId'].apply(
-                lambda x: len(set(self.git_repo.git.show("--format='%ae'", *x.unique().tolist()).split()))
-            ).reset_index()
-            version_dev_count.rename(columns={'CommitId': 'DevelopersChanged'}, inplace=True)
-            file_data = pd.merge(file_data, version_dev_count, on='Version', how='left')
-            return file_data
 
-        # Function to count the number of developers changing the file in current version and all previous versions
-        def count_unique_developers_before_version(file_data):
-            version_devs = file_data.groupby('Version')['CommitId'].apply(
-                lambda x: set(self.git_repo.git.show("--format='%ae'", *x.unique().tolist()).split())
-            ).reset_index()
-            version_devs.rename(columns={'CommitId': 'DevelopersList'}, inplace=True)
-            file_data = pd.merge(file_data, version_devs, on='Version', how='left')
+def main():
+    git_local_repo_path = 'C:/Users/bryan/Documents/GitHub/hive'
+    files_vars_path = 'C:/Users/bryan/Documents/GitHub/ETS/MGL869/cleaned_files_vars.csv'
+    
+    os.chdir(git_local_repo_path)
+    subprocess.run(['git', 'pull', 'origin', 'master'])
+    
+    df = pd.read_csv(files_vars_path)
+    df = df.head(5)
 
-            file_data['DevelopersBeforeVersion'] = file_data.apply(
-                lambda row: len(set.union(*[dev_set for dev_set in row['DevelopersList'] if row['CommitId'] not in dev_set])),
-                axis=1
-            )
-
-            file_data.drop('DevelopersList', axis=1, inplace=True)
-            return file_data
-
-        # Function to calculate the average time between changes in each version
-        def calculate_average_time_between_changes(file_data):
-            version_commits = file_data.groupby('Version')['CommitId'].apply(list).reset_index()
-            version_commits.rename(columns={'CommitId': 'CommitsList'}, inplace=True)
-            file_data = pd.merge(file_data, version_commits, on='Version', how='left')
-
-            file_data['TimeBetweenChanges'] = file_data.apply(
-                lambda row: self.calculate_average_time(row['CommitsList']), axis=1
-            )
-
-            file_data.drop('CommitsList', axis=1, inplace=True)
-            return file_data
-
-        # Function to calculate the average expertise of developers for each file in each version
-        def calculate_average_developer_expertise(file_data):
-            version_commits = file_data.groupby('Version')['CommitId'].apply(list).reset_index()
-            version_commits.rename(columns={'CommitId': 'CommitsList'}, inplace=True)
-            file_data = pd.merge(file_data, version_commits, on='Version', how='left')
-
-            file_data['AverageDeveloperExpertise'] = file_data.apply(
-                lambda row: self.calculate_average_expertise(row['CommitsList'], row['CommitId']), axis=1
-            )
-
-            file_data.drop('CommitsList', axis=1, inplace=True)
-            return file_data
-
-        # Function to calculate the minimum expertise of developers for each file in each version
-        def calculate_minimum_developer_expertise(file_data):
-            version_commits = file_data.groupby('Version')['CommitId'].apply(list).reset_index()
-            version_commits.rename(columns={'CommitId': 'CommitsList'}, inplace=True)
-            file_data = pd.merge(file_data, version_commits, on='Version', how='left')
-
-            file_data['MinimumDeveloperExpertise'] = file_data.apply(
-                lambda row: self.calculate_minimum_expertise(row['CommitsList'], row['CommitId']), axis=1
-            )
-
-            file_data.drop('CommitsList', axis=1, inplace=True)
-            return file_data
-
-        # Calculate average time between commits for a list of commit ids
-        def calculate_average_time(commit_list):
-            times = [self.git_repo.git.log('-n 1', '--format=%ct', commit) for commit in commit_list]
-            times = [int(time) for time in times if time.strip().isdigit()]
-            if len(times) < 2:
-                return math.nan
-
-            average_time = sum([times[i] - times[i-1] for i in range(1, len(times))]) / (len(times))
-            return average_time
-
-        # Calculate average expertise of developers for a list of commit ids
-        def calculate_average_expertise(commit_list, current_commit):
-            expertise_values = []
-            for commit in commit_list:
-                if commit == current_commit:
-                    continue
-
-                try:
-                    file_diff = self.git_repo.git.diff(commit + '^..' + commit, '--', file_path)
-                    expertise_value = self.calculate_expertise_from_diff(file_diff)
-                    expertise_values.append(expertise_value)
-                except Exception as e:
-                    print("Error calculating expertise for commit {} and file {}: {}".format(commit, file_path, e))
-
-            if not expertise_values:
-                return math.nan
-
-            return sum(expertise_values) / len(expertise_values)
-
-        # Calculate minimum expertise of developers for a list of commit ids
-        def calculate_minimum_expertise(commit_list, current_commit):
-            expertise_values = []
-            for commit in commit_list:
-                if commit == current_commit:
-                    continue
-
-                try:
-                    file_diff = self.git_repo.git.diff(commit + '^..' + commit, '--', file_path)
-                    expertise_value = self.calculate_expertise_from_diff(file_diff)
-                    expertise_values.append(expertise_value)
-                except Exception as e:
-                    print("Error calculating expertise for commit {} and file {}: {}".format(commit, file_path, e))
-
-            if not expertise_values:
-                return math.nan
-
-            return min(expertise_values)
-
-        # Calculate expertise from the git diff output
-        def calculate_expertise_from_diff(diff_output):
-            added_lines = 0
-            deleted_lines = 0
-
-            lines = diff_output.splitlines()
-            for line in lines:
-                if line.startswith('+') and not line.startswith('+++'):
-                    added_lines += 1
-                elif line.startswith('-') and not line.startswith('---'):
-                    deleted_lines += 1
-
-            total_lines = added_lines + deleted_lines
-            if total_lines == 0:
-                return 0
-
-            expertise_value = added_lines / total_lines
-            return expertise_value
-
-        # Utilisation de la classe CollectNewMetrics pour calculer les nouvelles métriques
-        print("Starting metrics calculation...")
-        print("Reading data from '{}'...".format(self.cleaned_files_vars_path))
-        new_metrics_data = cleaned_data.copy()
-
-        # Calculating 'LinesAdded' and 'LinesDeleted'
-        if 'CountLineCode' in new_metrics_data.columns and 'AltCountLineCode' in new_metrics_data.columns:
-            print("Calculating 'LinesAdded' and 'LinesDeleted'...")
-            new_metrics_data = count_lines_added_deleted(new_metrics_data)
-        else:
-            print("Skipping 'LinesAdded' and 'LinesDeleted' calculation as required columns are missing.")
-
-        # Calculating 'CommitsChanged'
-        print("Calculating 'CommitsChanged'...")
-        new_metrics_data = count_commits_per_version(new_metrics_data)
-
-        # Calculating 'BugFixingCommits'
-        print("Calculating 'BugFixingCommits'...")
-        new_metrics_data = count_bug_fixing_commits(new_metrics_data)
-
-        # Calculating 'CommitsBeforeVersion'
-        print("Calculating 'CommitsBeforeVersion'...")
-        new_metrics_data = count_commits_before_version(new_metrics_data)
-
-        # Calculating 'DevelopersChanged'
-        print("Calculating 'DevelopersChanged'...")
-        new_metrics_data = count_unique_developers_per_version(new_metrics_data)
-
-        # Calculating 'DevelopersBeforeVersion'
-        print("Calculating 'DevelopersBeforeVersion'...")
-        new_metrics_data = count_unique_developers_before_version(new_metrics_data)
-
-        # Calculating 'AverageTimeBetweenChanges'
-        print("Calculating 'AverageTimeBetweenChanges'...")
-        new_metrics_data = calculate_average_time_between_changes(new_metrics_data)
-
-        # Calculating 'AverageDeveloperExpertise'
-        print("Calculating 'AverageDeveloperExpertise'...")
-        new_metrics_data = calculate_average_developer_expertise(new_metrics_data)
-
-        # Calculating 'MinimumDeveloperExpertise'
-        print("Calculating 'MinimumDeveloperExpertise'...")
-        new_metrics_data = calculate_minimum_developer_expertise(new_metrics_data)
-
-        print("Metrics calculation completed.")
-        return new_metrics_data
+    for index, row in df.iterrows():
+        print(index)
+        file_path = row['Fichier']
+        version = row['Version']
+        prev_version = get_previous_version(version)
+    
+        df.at[index, 'AddedLines'], df.at[index, 'DeletedLines'] = get_added_deleted_lines(file_path, prev_version, version)
+        df.at[index, 'NumCommits'] = get_commits_changing_file(file_path, version)
+        df.at[index, 'BugFixingCommits'] = get_bug_fixing_commits(file_path, version)
+        df.at[index, 'DevelopersCount'] = get_developers_changing_file(file_path, version)
+        df.at[index, 'AvgTimeBetweenCommits'] = get_avg_time_between_commits(file_path, version)
+        df.at[index, 'AvgDeveloperExpertise'], df.at[index, 'MinDeveloperExpertise'] = get_developer_expertise(file_path, version)
+        
+    output_path = 'C:/Users/bryan/Documents/GitHub/ETS/MGL869/cleaned_files_newMetrics.csv'
+    df.to_csv(output_path, index=False)
+    print(df)
 
 if __name__ == "__main__":
-    # Utilisation de la classe CollectNewMetrics pour calculer les nouvelles métriques
-    cleaner = CollectNewMetrics('cleaned_files_vars.csv', 'C:/Users/elwin/OneDrive/Documents/ETS/mglDevops/hive')
-    new_metrics_data = cleaner.calculate_new_metrics()
-
-    # Écrire les nouvelles métriques dans le fichier finale_vars.csv
-    new_metrics_data.to_csv('finale_vars.csv', index=False)
+    main()
